@@ -74,6 +74,16 @@ module.exports = function(RED) {
                 value = (property === 'true');
             } else if(type === "num") {
                 value = Number(property);
+            } else if(type === 'jsonata'){
+                //console.log(property)
+                let expr = RED.util.prepareJSONataExpression(property, node);
+                console.log(expr);
+                value = RED.util.evaluateJSONataExpression(expr, msg, (data)=> {
+                    console.log(data)
+                })
+                console.log(value);
+            } else if(type === 'env'){
+                value = RED.util.evaluateEnvProperty(property, node);
             }
             return value;
         }

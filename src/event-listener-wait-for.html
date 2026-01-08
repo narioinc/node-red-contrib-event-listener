@@ -37,14 +37,14 @@
 
             if(this.eventIdType === "string") {
                 return `wait for: ${this.eventListenerNamespace ? `${RED.nodes.node(this.eventListenerNamespace).name}.` : ''}${this.eventIdValue}`;
-            } else if(this.eventIdType === "msg" || this.eventIdType === "flow" || this.eventIdType === "global") {
+            } else if(this.eventIdType === "msg" || this.eventIdType === "flow" || this.eventIdType === "global" || this.eventIdType === "jsonata") {
                 return `wait for: ${this.eventListenerNamespace ? `${RED.nodes.node(this.eventListenerNamespace).name}.` : ''}{${this.eventIdType}.${this.eventIdValue}}`;
             }
             return "wait for event";
         },
         oneditprepare: function() {
             $("#node-input-eventId").typedInput({
-                types:['msg','flow','global','str'],
+                types:['msg','flow','global','str', "env", "jsonata"],
             })
                 .typedInput('value', this.eventIdValue || "topic")
                 .typedInput('type', this.eventIdType || "msg");

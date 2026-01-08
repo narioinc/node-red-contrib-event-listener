@@ -1,17 +1,17 @@
 {
-  "name": "@skylord123/event-listener",
-  "version": "0.0.3",
+  "name": "@narioinc/event-listener",
+  "version": "0.0.4",
   "description": "Emit, listen for, and wait on events using nodes in Node-RED",
   "repository": {
     "type": "git",
-    "url": "git@github.com:Skylar-Tech/node-red-contrib-event-listener.git"
+    "url": "https://github.com/narioinc/node-red-contrib-event-listener"
   },
-  "author": "skylord123",
+  "author": "narioinc89",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Skylar-Tech/node-red-contrib-event-listener/issues"
+    "url": "https://github.com/narioinc/node-red-contrib-event-listener"
   },
-  "homepage": "https://github.com/Skylar-Tech/node-red-contrib-event-listener",
+  "homepage": "https://github.com/narioinc/node-red-contrib-event-listener",
   "keywords": [
     "node-red",
     "event",
