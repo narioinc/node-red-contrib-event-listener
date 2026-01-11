@@ -34,7 +34,7 @@ class TimeoutManager {
     }
 }
 
-module.exports = function(RED) {
+module.exports = function (RED) {
     function EventListenerWaitFor(n) {
         RED.nodes.createNode(this, n);
         let node = this;
@@ -54,38 +54,56 @@ module.exports = function(RED) {
 
         node.log("Initializing event-listener-wait-for node");
 
-        if(!this.eventListenerNamespace) {
+        if (!this.eventListenerNamespace) {
             node.warn("No namespace configuration node");
-            node.status({fill:"red",shape:"dot",text:"No namespace configuration node"});
+            node.status({ fill: "red", shape: "dot", text: "No namespace configuration node" });
         }
-        node.status({fill:"green",shape:"dot",text:`ready`});
+        node.status({ fill: "green", shape: "dot", text: `ready` });
 
         function getToValue(msg, type, property) {
             let value = property;
+           
             if (type === "msg") {
                 value = RED.util.getMessageProperty(msg, property);
+                
             } else if ((type === 'flow') || (type === 'global')) {
                 try {
                     value = RED.util.evaluateNodeProperty(property, type, node, msg);
-                } catch(e2) {
+                   
+                } catch (e2) {
                     throw new Error("Invalid value evaluation");
                 }
-            } else if(type === "bool") {
+            } else if (type === "bool") {
                 value = (property === 'true');
-            } else if(type === "num") {
+                
+            } else if (type === "num") {
                 value = Number(property);
-            } else if(type === 'jsonata'){
-                //console.log(property)
-                let expr = RED.util.prepareJSONataExpression(property, node);
-                console.log(expr);
-                value = RED.util.evaluateJSONataExpression(expr, msg, (data)=> {
-                    console.log(data)
-                })
-                console.log(value);
-            } else if(type === 'env'){
+               
+            } else if (type === 'jsonata') {
+                value = getToValueAsync(msg, type, property);
+                
+            } else if (type === 'env') {
                 value = RED.util.evaluateEnvProperty(property, node);
+                
             }
             return value;
+        }
+
+        async function getToValueAsync(msg, type, property) {
+            return new Promise((resolve, reject) => {
+                if (type === 'jsonata') {
+                    let expr = RED.util.prepareJSONataExpression(property, node);
+                    RED.util.evaluateJSONataExpression(expr, msg, function (err, result) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(result);
+                        }
+                    });
+                } else {
+                    resolve(getToValue(msg, type, property));
+                }
+            });
         }
 
         function setToValue(msg, type, property, valueToSet) {
@@ -104,16 +122,23 @@ module.exports = function(RED) {
             return msg;
         }
 
-        node.on("input", async function(msg) {
-            let eventId = getToValue(msg, node.eventIdType, node.eventIdValue),
-                timeout = getToValue(msg, node.timeoutType, node.timeoutValue) || false,
+        node.on("input", async function (msg) {
+            
+            let eventId
+            if (node.eventIdType === 'jsonata') {
+                eventId = await getToValueAsync(msg, node.eventIdType, node.eventIdValue)
+            } else {
+                eventId = getToValue(msg, node.eventIdType, node.eventIdValue)
+            }
+
+            let timeout = getToValue(msg, node.timeoutType, node.timeoutValue) || false,
                 timeoutId = null;
 
-            if(isNaN(timeout)) {
-                node.status({fill:"red", shape:"ring", text:"Timeout is not a number"});
+            if (isNaN(timeout)) {
+                node.status({ fill: "red", shape: "ring", text: "Timeout is not a number" });
                 return null;
-            } else if(timeout <= 0) {
-                node.status({fill:"orange", shape:"ring", text:"Timeout cannot be <= 0"});
+            } else if (timeout <= 0) {
+                node.status({ fill: "orange", shape: "ring", text: "Timeout cannot be <= 0" });
                 return null;
             }
 
@@ -135,45 +160,45 @@ module.exports = function(RED) {
             }
             console.log("timeout2", timeout);
 
-            timeoutId = node.timeoutManager.setTimeout(function(){
+            timeoutId = node.timeoutManager.setTimeout(function () {
                 removeListener();
                 node.send([null, msg]);
-                node.status({fill:"red",shape:"dot",text:`timeout: ${eventId}`});
+                node.status({ fill: "red", shape: "dot", text: `timeout: ${eventId}` });
             }, timeout);
 
-            function callback(payload){
+            function callback(payload) {
                 let newMsg = undefined;
-                if(node.eventHandling === "merge-original" && typeof payload === "object") {
+                if (node.eventHandling === "merge-original" && typeof payload === "object") {
                     // merge event payload into msg
                     newMsg = Object.assign({}, msg, payload);
-                } else if(node.eventHandling === "merge-event" && typeof payload === "object") {
+                } else if (node.eventHandling === "merge-event" && typeof payload === "object") {
                     // merge msg into event payload
                     newMsg = Object.assign({}, payload, msg);
-                } else if(node.eventHandling === "set-property") {
+                } else if (node.eventHandling === "set-property") {
                     // set the event payload to a specific property
                     newMsg = setToValue(msg, node.eventHandlingPropType, node.eventHandlingPropValue, payload);
                 }
-                if(node.timeoutHandling === "single") {
+                if (node.timeoutHandling === "single") {
                     // we only want a single event, so remove the listener
                     removeListener();
-                    if(timeoutId) {
+                    if (timeoutId) {
                         node.timeoutManager.clearTimeout(timeoutId);
                     }
                 }
                 node.send(newMsg || msg);
-                node.status({fill:"green",shape:"dot",text:`completed: ${eventId}`});
+                node.status({ fill: "green", shape: "dot", text: `completed: ${eventId}` });
             }
 
             function removeListener() {
                 node.eventListenerNamespace.removeListener(eventId, callback);
             }
             node.eventListenerNamespace.on(eventId, callback);
-            node.status({fill:"orange", shape:"ring", text:`waiting: ${eventId}`});
+            node.status({ fill: "orange", shape: "ring", text: `waiting: ${eventId}` });
         });
 
-        node.on("close", function() {
+        node.on("close", function () {
             // clear any timeouts
-            if(node.timeoutManager) {
+            if (node.timeoutManager) {
                 node.timeoutManager.clearAllTimeouts();
             }
         });
